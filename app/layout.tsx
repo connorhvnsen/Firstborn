@@ -14,8 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Firstborn",
-  description:
-    "A brand naming assistant rooted in the principles of Don't Call It That.",
+  description: "A brand naming assistant.",
 };
 
 export default function RootLayout({

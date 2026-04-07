@@ -11,7 +11,7 @@ export default async function LoginPage({
     <div className="min-h-full flex-1 bg-stone-50 text-stone-800">
       <main className="mx-auto flex w-full max-w-sm flex-col items-center px-6 py-24">
         <h1 className="text-2xl font-light tracking-wide text-stone-900">
-          庭 · Sign in
+          初 · Sign in
         </h1>
         <p className="mt-3 text-center text-sm text-stone-500">
           Sign in to claim your free generations and save your work.
@@ -76,7 +76,13 @@ function GoogleIcon() {
 
 function AppleIcon() {
   return (
-    <svg width="16" height="18" viewBox="0 0 16 18" aria-hidden="true" fill="currentColor">
+    <svg
+      width="16"
+      height="18"
+      viewBox="0 0 16 18"
+      aria-hidden="true"
+      fill="currentColor"
+    >
       <path d="M13.36 9.55c-.02-2.16 1.77-3.2 1.85-3.25-1.01-1.47-2.58-1.67-3.14-1.7-1.34-.13-2.61.79-3.29.79-.68 0-1.73-.77-2.84-.75-1.46.02-2.81.85-3.56 2.16-1.52 2.63-.39 6.51 1.09 8.65.72 1.05 1.58 2.22 2.71 2.18 1.09-.04 1.5-.7 2.82-.7 1.31 0 1.69.7 2.84.68 1.17-.02 1.92-1.06 2.64-2.11.83-1.21 1.17-2.39 1.19-2.45-.03-.01-2.29-.88-2.31-3.5zM11.2 3.16c.6-.73 1-1.74.89-2.74-.86.04-1.9.57-2.52 1.3-.55.65-1.04 1.68-.91 2.66.96.07 1.94-.49 2.54-1.22z" />
     </svg>
   );

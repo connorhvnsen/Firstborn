@@ -89,6 +89,32 @@ end;
 $$;
 
 -- =============================================================
+-- generations: one row per successful name generation, so users
+-- can revisit past results. Inputs are stored alongside the
+-- streamed output. RLS lets each user read their own rows;
+-- inserts go through the service-role client in the API route.
+-- =============================================================
+create table if not exists public.generations (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  description text not null,
+  feeling     text,
+  competitors text,
+  output      text not null,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists generations_user_id_created_at_idx
+  on public.generations (user_id, created_at desc);
+
+alter table public.generations enable row level security;
+
+drop policy if exists "generations_self_select" on public.generations;
+create policy "generations_self_select"
+  on public.generations for select
+  using (auth.uid() = user_id);
+
+-- =============================================================
 -- Stripe webhook idempotency: insert (id) succeeds once,
 -- subsequent deliveries of the same event no-op.
 -- =============================================================
