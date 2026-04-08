@@ -5,20 +5,15 @@ type Props = {
   signedIn: boolean;
   email: string | null;
   credits: number;
+  unlimited?: boolean;
 };
 
-export function Header({ signedIn, email, credits }: Props) {
+export function Header({ signedIn, email, credits, unlimited }: Props) {
   return (
-    <div className="border-b border-stone-200 bg-white/60 backdrop-blur">
+    <div className="sticky top-0 z-50 border-b border-stone-200 bg-white/60 backdrop-blur">
       <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-8 px-6 py-4 text-xs">
         {/* Left: brand + nav */}
         <div className="flex items-center gap-8">
-          <Link
-            href="/"
-            className="text-lg font-light tracking-wide text-stone-700 hover:text-stone-900"
-          >
-            初
-          </Link>
           {signedIn && (
             <nav className="flex items-center gap-7">
               <Link
@@ -41,8 +36,17 @@ export function Header({ signedIn, email, credits }: Props) {
         {signedIn ? (
           <div className="flex items-center gap-6">
             <span className="text-stone-500">
-              <span className="font-medium text-stone-800">{credits}</span>{" "}
-              {credits === 1 ? "generation" : "generations"} left
+              {unlimited ? (
+                <>
+                  <span className="font-medium text-stone-800">∞</span>{" "}
+                  generations
+                </>
+              ) : (
+                <>
+                  <span className="font-medium text-stone-800">{credits}</span>{" "}
+                  {credits === 1 ? "generation" : "generations"} left
+                </>
+              )}
             </span>
             <span className="hidden text-stone-400 sm:inline">{email}</span>
             <form action="/auth/signout" method="post">

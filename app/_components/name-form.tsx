@@ -1,18 +1,50 @@
 "use client";
 
-import { useState } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
+import { RefreshCw } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { createProject } from "@/app/_actions/projects";
+
+type Project = { id: string; name: string };
+
+type Generation = {
+  id: string;
+  description: string;
+  feeling: string | null;
+  competitors: string | null;
+  output: string;
+  created_at: string;
+};
 
 type Props = {
   signedIn: boolean;
   initialCredits: number;
+  unlimited: boolean;
+  projects: Project[];
+  currentProjectId: string | null;
+  initialGenerations: Generation[];
 };
 
 const fieldClass =
@@ -21,30 +53,91 @@ const fieldClass =
 const primaryButtonClass =
   "h-auto w-full rounded-md bg-stone-800 px-4 py-3 text-sm font-medium tracking-wide text-stone-50 shadow-none transition-colors hover:bg-stone-900 disabled:cursor-not-allowed disabled:bg-stone-300 disabled:opacity-100";
 
-export function NameForm({ signedIn, initialCredits }: Props) {
-  const [description, setDescription] = useState("");
-  const [feeling, setFeeling] = useState("");
-  const [competitors, setCompetitors] = useState("");
-  const [output, setOutput] = useState("");
+export function NameForm({
+  signedIn,
+  initialCredits,
+  unlimited,
+  projects,
+  currentProjectId,
+  initialGenerations,
+}: Props) {
+  const router = useRouter();
+  const [creatingProject, startCreatingProject] = useTransition();
+
+  // Local copy of the project's generations. Newest first. We mutate this
+  // locally after each successful submission so the user doesn't have to
+  // wait for a server round-trip to see their new gen in the pagination.
+  const [genList, setGenList] = useState<Generation[]>(initialGenerations);
+  // Index into genList for the currently displayed generation. 0 = newest.
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const initial = initialGenerations[0];
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [feeling, setFeeling] = useState(initial?.feeling ?? "");
+  const [competitors, setCompetitors] = useState(initial?.competitors ?? "");
+  const [output, setOutput] = useState(initial?.output ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [, setCredits] = useState(initialCredits);
-  const [outOfCredits, setOutOfCredits] = useState(initialCredits === 0);
+  const [outOfCredits, setOutOfCredits] = useState(
+    !unlimited && initialCredits === 0,
+  );
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+  // Scroll the output card to near the top of the viewport whenever a
+  // generation kicks off, so the user immediately sees the skeleton /
+  // result instead of having to scroll past the form.
+  const outputCardRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!loading) return;
+    outputCardRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, [loading]);
+
+  function showGen(index: number) {
+    const g = genList[index];
+    if (!g) return;
+    setCurrentIndex(index);
+    setDescription(g.description);
+    setFeeling(g.feeling ?? "");
+    setCompetitors(g.competitors ?? "");
+    setOutput(g.output);
+    setError(null);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!description.trim() || loading) return;
+    await runGeneration();
+  }
+
+  async function runGeneration() {
+    if (!description.trim() || loading || !currentProjectId) return;
 
     setLoading(true);
     setError(null);
-    setOutput("");
+    // Intentionally do NOT clear `output` here — the previous generation
+    // stays on screen while the skeleton loader indicates new content is
+    // being produced.
+
+    // Snapshot the inputs at submit time so the new gen we prepend later
+    // matches what was actually sent to the API, even if the user edits
+    // the fields while it's streaming.
+    const submittedDescription = description;
+    const submittedFeeling = feeling;
+    const submittedCompetitors = competitors;
 
     try {
       const res = await fetch("/api/generate-names", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description, feeling, competitors }),
+        body: JSON.stringify({
+          description: submittedDescription,
+          feeling: submittedFeeling,
+          competitors: submittedCompetitors,
+          projectId: currentProjectId,
+        }),
       });
 
       if (res.status === 402) {
@@ -59,16 +152,37 @@ export function NameForm({ signedIn, initialCredits }: Props) {
         throw new Error(data.error ?? `Request failed (${res.status})`);
       }
 
-      // Optimistically update the visible balance.
-      setCredits((c) => Math.max(0, c - 1));
+      // Optimistically update the visible balance (no-op for unlimited users).
+      if (!unlimited) {
+        setCredits((c) => Math.max(0, c - 1));
+      }
 
+      // Accumulate the entire response before rendering anything. The user
+      // explicitly prefers a single fade-in over a token-by-token stream —
+      // it feels more intentional and gives a clean reveal moment.
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
+      let fullOutput = "";
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
-        setOutput((prev) => prev + decoder.decode(value, { stream: true }));
+        fullOutput += decoder.decode(value, { stream: true });
       }
+
+      // Prepend the new generation to the local list and jump to it.
+      // The id/created_at are placeholders — they only matter for keys
+      // and the server will have authoritative values on the next reload.
+      const newGen: Generation = {
+        id: `local-${Date.now()}`,
+        description: submittedDescription,
+        feeling: submittedFeeling || null,
+        competitors: submittedCompetitors || null,
+        output: fullOutput,
+        created_at: new Date().toISOString(),
+      };
+      setGenList((prev) => [newGen, ...prev]);
+      setCurrentIndex(0);
+      setOutput(fullOutput);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -96,8 +210,66 @@ export function NameForm({ signedIn, initialCredits }: Props) {
   const canSubmit =
     signedIn && !outOfCredits && !loading && description.trim().length > 0;
 
+  function handleProjectChange(id: string | null) {
+    if (!id || id === currentProjectId) return;
+    router.push(`/?project=${id}`);
+  }
+
+  function handleNewProject() {
+    startCreatingProject(async () => {
+      await createProject();
+    });
+  }
+
   return (
     <>
+      {signedIn && currentProjectId && projects.length > 0 && (
+        <div className="mb-8">
+          <Label
+            htmlFor="project-select"
+            className="mb-2 block text-xs font-medium tracking-widest text-stone-500 uppercase"
+          >
+            Project
+          </Label>
+          <div className="flex items-center gap-2">
+            <Select
+              value={currentProjectId}
+              onValueChange={handleProjectChange}
+              items={projects.map((p) => ({ value: p.id, label: p.name }))}
+            >
+              <SelectTrigger
+                id="project-select"
+                size="default"
+                className="w-full flex-1 rounded-md border-stone-200 bg-white text-stone-800 shadow-sm focus-visible:ring-1 focus-visible:ring-stone-300"
+              >
+                <SelectValue>
+                  {(value: string | null) =>
+                    projects.find((p) => p.id === value)?.name ?? ""
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent className="border border-stone-200 bg-white shadow-sm">
+                {projects.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              type="button"
+              variant="outline"
+              size="default"
+              onClick={handleNewProject}
+              disabled={creatingProject}
+              className="rounded-md border-stone-200 bg-white text-stone-700 shadow-sm hover:bg-stone-50 hover:text-stone-900"
+            >
+              {creatingProject ? "…" : "+ New Project"}
+            </Button>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-6">
         <Field label="What are you building?" required htmlFor="description">
           <Textarea
@@ -160,7 +332,11 @@ export function NameForm({ signedIn, initialCredits }: Props) {
             disabled={!canSubmit}
             className={primaryButtonClass}
           >
-            {loading ? "Listening to the stones..." : "Suggest Names"}
+            {loading
+              ? "Listening to the flame..."
+              : output
+                ? "Regenerate"
+                : "Suggest Names"}
           </Button>
         )}
       </form>
@@ -176,14 +352,133 @@ export function NameForm({ signedIn, initialCredits }: Props) {
         </Alert>
       )}
 
-      {output && (
-        <Card className="mt-12 gap-0 rounded-md border border-stone-200 bg-white py-0 shadow-sm ring-0">
-          <CardContent className="prose prose-stone max-w-none p-6 prose-headings:font-light prose-headings:tracking-wide prose-p:leading-relaxed prose-strong:text-stone-900">
-            <ReactMarkdown>{output}</ReactMarkdown>
+      {(output || loading) && (
+        <Card
+          ref={outputCardRef}
+          className="relative mt-12 scroll-mt-20 gap-0 overflow-visible rounded-md border border-stone-200 bg-white py-0 shadow-sm ring-0"
+        >
+          <CardContent className="p-0">
+            {/* Relative wrapper anchors the absolute skeleton overlay so
+                it can sit on top of the previous generation's content
+                without changing the card's height. */}
+            <div className="relative">
+              {output && (
+                <div
+                  key={genList[currentIndex]?.id ?? "empty"}
+                  className="prose prose-stone prose-headings:font-light prose-headings:tracking-wide prose-p:leading-relaxed prose-strong:text-stone-900 animate-in fade-in-0 slide-in-from-bottom-2 max-w-none p-6 duration-700 ease-out"
+                >
+                  <ReactMarkdown>{output}</ReactMarkdown>
+                </div>
+              )}
+              {loading && (
+                <div
+                  className={
+                    output
+                      ? "absolute inset-0 rounded-t-md bg-white"
+                      : "min-h-80"
+                  }
+                >
+                  <OutputSkeleton />
+                </div>
+              )}
+            </div>
           </CardContent>
+          {genList.length > 0 && (
+            <div className="sticky bottom-0 z-10 flex items-center justify-between gap-3 rounded-b-md border-t border-stone-200 bg-white/80 px-4 py-3 backdrop-blur">
+              <Button
+                type="button"
+                variant="outline"
+                size="default"
+                onClick={() => showGen(currentIndex + 1)}
+                disabled={loading || currentIndex >= genList.length - 1}
+                className="rounded-md border-stone-200 bg-white text-stone-700 shadow-sm hover:bg-stone-50 hover:text-stone-900"
+              >
+                ← Prev
+              </Button>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-stone-500">
+                  {loading
+                    ? "Generating…"
+                    : `${genList.length - currentIndex} of ${genList.length}`}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="default"
+                  onClick={runGeneration}
+                  disabled={loading || !canSubmit}
+                  className="rounded-md border-stone-200 bg-white text-stone-700 shadow-sm hover:bg-stone-50 hover:text-stone-900"
+                >
+                  <RefreshCw
+                    className={`size-4 shrink-0 ${loading ? "animate-spin" : ""}`}
+                  />
+                  Regenerate
+                </Button>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="default"
+                onClick={() => showGen(currentIndex - 1)}
+                disabled={loading || currentIndex <= 0}
+                className="rounded-md border-stone-200 bg-white text-stone-700 shadow-sm hover:bg-stone-50 hover:text-stone-900"
+              >
+                Next →
+              </Button>
+            </div>
+          )}
         </Card>
       )}
     </>
+  );
+}
+
+// Tailwind p-6 = 24px each side, h-20 = 80px, gap-6 = 24px. Keep in sync
+// with the className below if you tweak any of those.
+const SKELETON_PADDING_Y = 48;
+const SKELETON_ROW_HEIGHT = 80;
+const SKELETON_ROW_GAP = 24;
+
+function OutputSkeleton() {
+  // Measure the container's height and render however many skeleton rows
+  // fit inside it. ResizeObserver keeps the count in sync if the window
+  // (and therefore the prose underneath) resizes mid-load.
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [count, setCount] = useState(1);
+
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    function measure() {
+      if (!el) return;
+      const usable = Math.max(0, el.clientHeight - SKELETON_PADDING_Y);
+      // The last row doesn't need a trailing gap, so add one gap before
+      // dividing.
+      const fit = Math.floor(
+        (usable + SKELETON_ROW_GAP) / (SKELETON_ROW_HEIGHT + SKELETON_ROW_GAP),
+      );
+      setCount(Math.max(1, fit));
+    }
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={containerRef}
+      className="flex h-full flex-col gap-6 p-6"
+      aria-busy="true"
+      aria-live="polite"
+      aria-label="Generating new names"
+    >
+      {Array.from({ length: count }).map((_, i) => (
+        <Skeleton key={i} className="h-20 w-full shrink-0" />
+      ))}
+    </div>
   );
 }
 
@@ -202,7 +497,7 @@ function Field({
     <div>
       <Label
         htmlFor={htmlFor}
-        className="mb-2 block text-xs font-medium uppercase tracking-widest text-stone-500"
+        className="mb-2 block text-xs font-medium tracking-widest text-stone-500 uppercase"
       >
         {label}
         {required && <span className="ml-1 text-stone-400">*</span>}
