@@ -9,29 +9,45 @@ type Props = {
 export function Header({ signedIn, email, credits }: Props) {
   return (
     <div className="border-b border-stone-200 bg-white/60 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-2xl items-center justify-between px-6 py-3 text-xs">
-        <Link href="/" className="text-stone-400 hover:text-stone-600">
-          初
-        </Link>
+      <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-8 px-6 py-4 text-xs">
+        {/* Left: brand + nav */}
+        <div className="flex items-center gap-8">
+          <Link
+            href="/"
+            className="text-lg font-light tracking-wide text-stone-700 hover:text-stone-900"
+          >
+            初
+          </Link>
+          {signedIn && (
+            <nav className="flex items-center gap-7">
+              <Link
+                href="/"
+                className="text-stone-500 underline-offset-4 hover:text-stone-900 hover:underline"
+              >
+                Generator
+              </Link>
+              <Link
+                href="/history"
+                className="text-stone-500 underline-offset-4 hover:text-stone-900 hover:underline"
+              >
+                History
+              </Link>
+            </nav>
+          )}
+        </div>
+
+        {/* Right: account */}
         {signedIn ? (
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-6">
             <span className="text-stone-500">
               <span className="font-medium text-stone-800">{credits}</span>{" "}
               {credits === 1 ? "generation" : "generations"} left
             </span>
-            <span className="hidden text-stone-300 sm:inline">·</span>
-            <Link
-              href="/history"
-              className="text-stone-500 underline-offset-2 hover:text-stone-800 hover:underline"
-            >
-              History
-            </Link>
-            <span className="hidden text-stone-300 sm:inline">·</span>
-            <span className="hidden text-stone-500 sm:inline">{email}</span>
+            <span className="hidden text-stone-400 sm:inline">{email}</span>
             <form action="/auth/signout" method="post">
               <button
                 type="submit"
-                className="text-stone-500 underline-offset-2 hover:text-stone-800 hover:underline"
+                className="text-stone-500 underline-offset-4 hover:text-stone-900 hover:underline"
               >
                 Sign out
               </button>
@@ -40,7 +56,7 @@ export function Header({ signedIn, email, credits }: Props) {
         ) : (
           <Link
             href="/login"
-            className="text-stone-500 underline-offset-2 hover:text-stone-800 hover:underline"
+            className="text-stone-500 underline-offset-4 hover:text-stone-900 hover:underline"
           >
             Sign in
           </Link>
