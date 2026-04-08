@@ -1,4 +1,6 @@
 import { signInWithApple, signInWithGoogle } from "./actions";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default async function LoginPage({
   searchParams,
@@ -19,28 +21,36 @@ export default async function LoginPage({
 
         <div className="mt-10 w-full space-y-3">
           <form action={signInWithGoogle}>
-            <button
+            <Button
               type="submit"
-              className="flex w-full items-center justify-center gap-3 rounded-md border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-stone-800 shadow-sm transition-colors hover:bg-stone-50"
+              variant="outline"
+              className="flex h-auto w-full items-center justify-center gap-3 rounded-md border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-stone-800 shadow-sm transition-colors hover:bg-stone-50 hover:text-stone-800"
             >
               <GoogleIcon />
               Continue with Google
-            </button>
+            </Button>
           </form>
 
           <form action={signInWithApple}>
-            <button
+            <Button
               type="submit"
-              className="flex w-full items-center justify-center gap-3 rounded-md border border-stone-900 bg-stone-900 px-4 py-3 text-sm font-medium text-stone-50 shadow-sm transition-colors hover:bg-black"
+              className="flex h-auto w-full items-center justify-center gap-3 rounded-md border border-stone-900 bg-stone-900 px-4 py-3 text-sm font-medium text-stone-50 shadow-sm transition-colors hover:bg-black"
             >
               <AppleIcon />
               Continue with Apple
-            </button>
+            </Button>
           </form>
         </div>
 
         {error && (
-          <p className="mt-6 text-center text-sm text-red-600">{error}</p>
+          <Alert
+            variant="destructive"
+            className="mt-6 border-red-200 bg-red-50 px-4 py-3 text-red-600 ring-0"
+          >
+            <AlertDescription className="text-center text-sm text-red-600">
+              {error}
+            </AlertDescription>
+          </Alert>
         )}
 
         <p className="mt-12 text-center text-xs text-stone-400">

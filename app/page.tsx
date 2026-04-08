@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { Header } from "./_components/header";
 import { NameForm } from "./_components/name-form";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default async function Home({
   searchParams,
@@ -39,14 +40,18 @@ export default async function Home({
         </header>
 
         {purchase === "success" && (
-          <div className="mb-8 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-            Thank you. 100 generations have been added to your account.
-          </div>
+          <Alert className="mb-8 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 ring-0">
+            <AlertDescription className="text-sm text-emerald-800">
+              Thank you. 100 generations have been added to your account.
+            </AlertDescription>
+          </Alert>
         )}
         {purchase === "cancelled" && (
-          <div className="mb-8 rounded-md border border-stone-200 bg-stone-100 px-4 py-3 text-sm text-stone-600">
-            Checkout cancelled. No charge was made.
-          </div>
+          <Alert className="mb-8 rounded-md border border-stone-200 bg-stone-100 px-4 py-3 text-stone-600 ring-0">
+            <AlertDescription className="text-sm text-stone-600">
+              Checkout cancelled. No charge was made.
+            </AlertDescription>
+          </Alert>
         )}
 
         <NameForm signedIn={!!user} initialCredits={credits} />

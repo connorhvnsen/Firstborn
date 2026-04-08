@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 type Props = {
   signedIn: boolean;
@@ -45,12 +46,14 @@ export function Header({ signedIn, email, credits }: Props) {
             </span>
             <span className="hidden text-stone-400 sm:inline">{email}</span>
             <form action="/auth/signout" method="post">
-              <button
+              <Button
                 type="submit"
-                className="text-stone-500 underline-offset-4 hover:text-stone-900 hover:underline"
+                variant="link"
+                size="sm"
+                className="h-auto p-0 text-xs font-normal text-stone-500 underline-offset-4 hover:text-stone-900 hover:no-underline"
               >
                 Sign out
-              </button>
+              </Button>
             </form>
           </div>
         ) : (

@@ -3,6 +3,13 @@ import { redirect } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import { createClient } from "@/lib/supabase/server";
 import { Header } from "../_components/header";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Card, CardContent } from "@/components/ui/card";
 
 type Generation = {
   id: string;
@@ -49,45 +56,45 @@ export default async function HistoryPage() {
         </header>
 
         {items.length === 0 ? (
-          <div className="rounded-md border border-stone-200 bg-white px-6 py-12 text-center text-sm text-stone-500 shadow-sm">
-            <p>You haven't generated any names yet.</p>
-            <Link
-              href="/"
-              className="mt-4 inline-block text-stone-700 underline-offset-2 hover:underline"
-            >
-              Begin →
-            </Link>
-          </div>
+          <Card className="gap-0 rounded-md border border-stone-200 bg-white py-0 text-center shadow-sm ring-0">
+            <CardContent className="px-6 py-12 text-sm text-stone-500">
+              <p>You haven't generated any names yet.</p>
+              <Link
+                href="/"
+                className="mt-4 inline-block text-stone-700 underline-offset-2 hover:underline"
+              >
+                Begin →
+              </Link>
+            </CardContent>
+          </Card>
         ) : (
-          <ul className="space-y-3">
+          <Accordion multiple className="space-y-3">
             {items.map((g) => (
-              <li key={g.id}>
-                <details className="group overflow-hidden rounded-md border border-stone-200 bg-white shadow-sm transition-colors open:border-stone-300">
-                  <summary className="flex cursor-pointer list-none items-start justify-between gap-4 px-5 py-4 hover:bg-stone-50">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm text-stone-800">
-                        {extractNames(g.output).join(", ") ||
-                          truncate(g.description, 80)}
-                      </p>
-                      <p className="mt-1 text-xs text-stone-400">
-                        {formatDate(g.created_at)}
-                      </p>
-                    </div>
-                    <span className="mt-1 text-stone-300 transition-transform group-open:rotate-90">
-                      ›
-                    </span>
-                  </summary>
-
-                  <div className="border-t border-stone-100 px-5 py-5">
-                    <Inputs g={g} />
-                    <article className="prose prose-stone mt-6 max-w-none prose-headings:font-light prose-headings:tracking-wide prose-p:leading-relaxed prose-strong:text-stone-900">
-                      <ReactMarkdown>{g.output}</ReactMarkdown>
-                    </article>
+              <AccordionItem
+                key={g.id}
+                value={g.id}
+                className="overflow-hidden rounded-md border border-stone-200 bg-white shadow-sm not-last:border-b transition-colors data-panel-open:border-stone-300"
+              >
+                <AccordionTrigger className="rounded-none px-5 py-4 hover:bg-stone-50 hover:no-underline focus-visible:ring-0">
+                  <div className="min-w-0 flex-1 text-left">
+                    <p className="truncate text-sm text-stone-800">
+                      {extractNames(g.output).join(", ") ||
+                        truncate(g.description, 80)}
+                    </p>
+                    <p className="mt-1 text-xs text-stone-400">
+                      {formatDate(g.created_at)}
+                    </p>
                   </div>
-                </details>
-              </li>
+                </AccordionTrigger>
+                <AccordionContent className="border-t border-stone-100 px-5 py-5">
+                  <Inputs g={g} />
+                  <article className="prose prose-stone mt-6 max-w-none prose-headings:font-light prose-headings:tracking-wide prose-p:leading-relaxed prose-strong:text-stone-900">
+                    <ReactMarkdown>{g.output}</ReactMarkdown>
+                  </article>
+                </AccordionContent>
+              </AccordionItem>
             ))}
-          </ul>
+          </Accordion>
         )}
 
         <footer className="mt-16 text-center text-xs text-stone-400">

@@ -1,12 +1,25 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import ReactMarkdown from "react-markdown";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent } from "@/components/ui/card";
 
 type Props = {
   signedIn: boolean;
   initialCredits: number;
 };
+
+const fieldClass =
+  "rounded-md border border-stone-200 bg-white px-4 py-3 text-stone-800 placeholder:text-stone-400 shadow-sm focus-visible:border-stone-400 focus-visible:ring-1 focus-visible:ring-stone-300";
+
+const primaryButtonClass =
+  "h-auto w-full rounded-md bg-stone-800 px-4 py-3 text-sm font-medium tracking-wide text-stone-50 shadow-none transition-colors hover:bg-stone-900 disabled:cursor-not-allowed disabled:bg-stone-300 disabled:opacity-100";
 
 export function NameForm({ signedIn, initialCredits }: Props) {
   const [description, setDescription] = useState("");
@@ -15,7 +28,7 @@ export function NameForm({ signedIn, initialCredits }: Props) {
   const [output, setOutput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [credits, setCredits] = useState(initialCredits);
+  const [, setCredits] = useState(initialCredits);
   const [outOfCredits, setOutOfCredits] = useState(initialCredits === 0);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
@@ -86,76 +99,89 @@ export function NameForm({ signedIn, initialCredits }: Props) {
   return (
     <>
       <form onSubmit={handleSubmit} className="space-y-6">
-        <Field label="What are you building?" required>
-          <textarea
+        <Field label="What are you building?" required htmlFor="description">
+          <Textarea
+            id="description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="A tea shop that only sells single-origin matcha..."
             rows={4}
             maxLength={2000}
-            className="w-full resize-none rounded-md border border-stone-200 bg-white px-4 py-3 text-stone-800 placeholder-stone-400 shadow-sm focus:border-stone-400 focus:outline-none focus:ring-1 focus:ring-stone-300"
             required
+            className={`min-h-0 resize-none ${fieldClass}`}
           />
         </Field>
 
-        <Field label="What should your audience feel?">
-          <input
+        <Field label="What should your audience feel?" htmlFor="feeling">
+          <Input
+            id="feeling"
             value={feeling}
             onChange={(e) => setFeeling(e.target.value)}
             placeholder="Calm, curious, in on a secret..."
-            className="w-full rounded-md border border-stone-200 bg-white px-4 py-3 text-stone-800 placeholder-stone-400 shadow-sm focus:border-stone-400 focus:outline-none focus:ring-1 focus:ring-stone-300"
+            className={`h-auto ${fieldClass}`}
           />
         </Field>
 
-        <Field label="Competitors (and what they're called)">
-          <textarea
+        <Field
+          label="Competitors (and what they're called)"
+          htmlFor="competitors"
+        >
+          <Textarea
+            id="competitors"
             value={competitors}
             onChange={(e) => setCompetitors(e.target.value)}
             placeholder="Ippodo, Marukyu Koyamaen, Nami Matcha..."
             rows={2}
-            className="w-full resize-none rounded-md border border-stone-200 bg-white px-4 py-3 text-stone-800 placeholder-stone-400 shadow-sm focus:border-stone-400 focus:outline-none focus:ring-1 focus:ring-stone-300"
+            className={`min-h-0 resize-none ${fieldClass}`}
           />
         </Field>
 
         {!signedIn ? (
-          <a
+          <Link
             href="/login"
-            className="block w-full rounded-md bg-stone-800 px-4 py-3 text-center text-sm font-medium tracking-wide text-stone-50 transition-colors hover:bg-stone-900"
+            className={`block text-center ${buttonVariants({ className: primaryButtonClass })}`}
           >
             Sign in to begin — 3 free generations
-          </a>
+          </Link>
         ) : outOfCredits ? (
-          <button
+          <Button
             type="button"
             onClick={handleBuy}
             disabled={checkoutLoading}
-            className="w-full rounded-md bg-stone-800 px-4 py-3 text-sm font-medium tracking-wide text-stone-50 transition-colors hover:bg-stone-900 disabled:bg-stone-400"
+            className={primaryButtonClass}
           >
             {checkoutLoading
               ? "Opening checkout..."
               : "Buy 100 generations — $14.99"}
-          </button>
+          </Button>
         ) : (
-          <button
+          <Button
             type="submit"
             disabled={!canSubmit}
-            className="w-full rounded-md bg-stone-800 px-4 py-3 text-sm font-medium tracking-wide text-stone-50 transition-colors hover:bg-stone-900 disabled:cursor-not-allowed disabled:bg-stone-300"
+            className={primaryButtonClass}
           >
             {loading ? "Listening to the stones..." : "Suggest Names"}
-          </button>
+          </Button>
         )}
       </form>
 
       {error && (
-        <div className="mt-8 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
+        <Alert
+          variant="destructive"
+          className="mt-8 border-red-200 bg-red-50 px-4 py-3 text-red-700 ring-0"
+        >
+          <AlertDescription className="text-sm text-red-700">
+            {error}
+          </AlertDescription>
+        </Alert>
       )}
 
       {output && (
-        <article className="prose prose-stone mt-12 max-w-none rounded-md border border-stone-200 bg-white p-6 shadow-sm prose-headings:font-light prose-headings:tracking-wide prose-p:leading-relaxed prose-strong:text-stone-900">
-          <ReactMarkdown>{output}</ReactMarkdown>
-        </article>
+        <Card className="mt-12 gap-0 rounded-md border border-stone-200 bg-white py-0 shadow-sm ring-0">
+          <CardContent className="prose prose-stone max-w-none p-6 prose-headings:font-light prose-headings:tracking-wide prose-p:leading-relaxed prose-strong:text-stone-900">
+            <ReactMarkdown>{output}</ReactMarkdown>
+          </CardContent>
+        </Card>
       )}
     </>
   );
@@ -164,19 +190,24 @@ export function NameForm({ signedIn, initialCredits }: Props) {
 function Field({
   label,
   required,
+  htmlFor,
   children,
 }: {
   label: string;
   required?: boolean;
+  htmlFor: string;
   children: React.ReactNode;
 }) {
   return (
-    <label className="block">
-      <span className="mb-2 block text-xs font-medium uppercase tracking-widest text-stone-500">
+    <div>
+      <Label
+        htmlFor={htmlFor}
+        className="mb-2 block text-xs font-medium uppercase tracking-widest text-stone-500"
+      >
         {label}
         {required && <span className="ml-1 text-stone-400">*</span>}
-      </span>
+      </Label>
       {children}
-    </label>
+    </div>
   );
 }
