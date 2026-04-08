@@ -108,7 +108,7 @@ export default async function ProjectHistoryPage({
                 value={g.id}
                 className="overflow-hidden rounded-md border border-stone-200 bg-white shadow-sm not-last:border-b transition-colors data-panel-open:border-stone-300"
               >
-                <AccordionTrigger className="rounded-none px-5 py-4 hover:bg-stone-50 hover:no-underline focus-visible:ring-0">
+                <AccordionTrigger className="min-w-0 rounded-none px-5 py-4 hover:bg-stone-50 hover:no-underline focus-visible:ring-0">
                   <div className="min-w-0 flex-1 text-left">
                     <p className="truncate text-sm text-stone-800">
                       {extractNames(g.output).join(", ") ||

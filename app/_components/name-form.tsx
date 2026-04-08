@@ -9,7 +9,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import ReactMarkdown from "react-markdown";
+import { AnimatedMarkdown } from "./animated-markdown";
 import { RefreshCw } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,6 +105,10 @@ export function NameForm({
     setCompetitors(g.competitors ?? "");
     setOutput(g.output);
     setError(null);
+    outputCardRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -355,7 +359,7 @@ export function NameForm({
       {(output || loading) && (
         <Card
           ref={outputCardRef}
-          className="relative mt-12 scroll-mt-20 gap-0 overflow-visible rounded-md border border-stone-200 bg-white py-0 shadow-sm ring-0"
+          className="relative mt-20 scroll-mt-20 gap-0 overflow-clip rounded-md border border-stone-200 bg-white py-0 shadow-sm ring-0"
         >
           <CardContent className="p-0">
             {/* Relative wrapper anchors the absolute skeleton overlay so
@@ -365,9 +369,9 @@ export function NameForm({
               {output && (
                 <div
                   key={genList[currentIndex]?.id ?? "empty"}
-                  className="prose prose-stone prose-headings:font-light prose-headings:tracking-wide prose-p:leading-relaxed prose-strong:text-stone-900 animate-in fade-in-0 slide-in-from-bottom-2 max-w-none p-6 duration-700 ease-out"
+                  className="prose prose-stone prose-headings:font-light prose-headings:tracking-wide prose-p:leading-relaxed prose-strong:text-stone-900 max-w-none p-6"
                 >
-                  <ReactMarkdown>{output}</ReactMarkdown>
+                  <AnimatedMarkdown>{output}</AnimatedMarkdown>
                 </div>
               )}
               {loading && (
