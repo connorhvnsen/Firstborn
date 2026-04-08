@@ -10,7 +10,7 @@ type Props = {
 
 export function Header({ signedIn, email, credits, unlimited }: Props) {
   return (
-    <div className="sticky top-0 z-50 border-b border-stone-200 bg-white/60 backdrop-blur">
+    <div className="sticky top-0 z-50 border-b border-stone-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-8 px-6 py-4 text-xs">
         {/* Left: brand + nav */}
         <div className="flex items-center gap-8">
