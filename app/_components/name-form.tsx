@@ -79,7 +79,6 @@ export function NameForm({
   const [output, setOutput] = useState(initial?.output ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [, setCredits] = useState(initialCredits);
   const [outOfCredits, setOutOfCredits] = useState(
     !unlimited && initialCredits === 0,
   );
@@ -147,7 +146,7 @@ export function NameForm({
 
       if (res.status === 402) {
         setOutOfCredits(true);
-        setCredits(0);
+        router.refresh();
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error ?? "Out of generations.");
       }
@@ -157,10 +156,6 @@ export function NameForm({
         throw new Error(data.error ?? `Request failed (${res.status})`);
       }
 
-      // Optimistically update the visible balance (no-op for unlimited users).
-      if (!unlimited) {
-        setCredits((c) => Math.max(0, c - 1));
-      }
 
       // Accumulate the entire response before rendering anything. The user
       // explicitly prefers a single fade-in over a token-by-token stream —
@@ -188,6 +183,9 @@ export function NameForm({
       setGenList((prev) => [newGen, ...prev]);
       setCurrentIndex(0);
       setOutput(fullOutput);
+      // Refresh the server component so the header credit count updates.
+      // Runs after the result is already on screen, so it's invisible to UX.
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
