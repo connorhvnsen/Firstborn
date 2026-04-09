@@ -408,24 +408,29 @@ export function NameForm({
                 ← Prev
               </Button>
               <div className="flex items-center gap-3">
-                <span className="text-xs text-stone-500">
-                  {loading
-                    ? "Generating…"
-                    : `${genList.length - currentIndex} of ${genList.length}`}
+                <span className="flex items-center gap-2 text-xs text-stone-500">
+                  {loading ? (
+                    <>
+                      <RefreshCw className="size-3 shrink-0 animate-spin" />
+                      Generating…
+                    </>
+                  ) : (
+                    `${genList.length - currentIndex} of ${genList.length}`
+                  )}
                 </span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="default"
-                  onClick={runGeneration}
-                  disabled={loading || !canSubmit}
-                  className="rounded-md border-stone-200 bg-white text-stone-700 shadow-sm hover:bg-stone-50 hover:text-stone-900"
-                >
-                  <RefreshCw
-                    className={`size-4 shrink-0 ${loading ? "animate-spin" : ""}`}
-                  />
-                  Regenerate
-                </Button>
+                {!loading && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="default"
+                    onClick={runGeneration}
+                    disabled={!canSubmit}
+                    className="rounded-md border-stone-200 bg-white text-stone-700 shadow-sm hover:bg-stone-50 hover:text-stone-900"
+                  >
+                    <RefreshCw className="size-4 shrink-0" />
+                    Regenerate
+                  </Button>
+                )}
               </div>
               <Button
                 type="button"
