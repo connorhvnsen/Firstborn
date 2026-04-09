@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Header } from "../_components/header";
+import { Footer } from "../_components/footer";
 import { Card, CardContent } from "@/components/ui/card";
 
 type Project = {
@@ -125,9 +126,7 @@ export default async function HistoryPage() {
           </ul>
         )}
 
-        <footer className="mt-16 text-center text-xs text-stone-400">
-          一期一会 — one meeting, one chance.
-        </footer>
+        <Footer />
       </main>
     </div>
   );

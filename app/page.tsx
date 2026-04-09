@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { Header } from "./_components/header";
+import { Footer } from "./_components/footer";
 import { NameForm } from "./_components/name-form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { isUnlimitedUser } from "@/lib/unlimited-users";
@@ -125,9 +126,7 @@ export default async function Home({
           initialGenerations={initialGenerations}
         />
 
-        <footer className="mt-16 text-center text-xs text-stone-400">
-          一期一会 — one meeting, one chance.
-        </footer>
+        <Footer />
       </main>
     </div>
   );

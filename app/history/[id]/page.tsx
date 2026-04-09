@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import { createClient } from "@/lib/supabase/server";
 import { Header } from "../../_components/header";
+import { Footer } from "../../_components/footer";
 import {
   Accordion,
   AccordionContent,
@@ -136,9 +137,7 @@ export default async function ProjectHistoryPage({
           </Accordion>
         )}
 
-        <footer className="mt-16 text-center text-xs text-stone-400">
-          一期一会 — one meeting, one chance.
-        </footer>
+        <Footer />
       </main>
     </div>
   );
