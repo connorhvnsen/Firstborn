@@ -25,7 +25,11 @@ export default async function Home({
 
   if (user) {
     const [{ data: profile }, { data: projectRows }] = await Promise.all([
-      supabase.from("profiles").select("credits").eq("user_id", user.id).single(),
+      supabase
+        .from("profiles")
+        .select("credits")
+        .eq("user_id", user.id)
+        .single(),
       supabase
         .from("projects")
         .select("id, name")
@@ -94,7 +98,7 @@ export default async function Home({
       <main className="mx-auto w-full max-w-2xl px-6 py-16 sm:py-24">
         <header className="mb-12 text-center">
           <h1 className="text-3xl font-light tracking-wide text-stone-900 sm:text-4xl">
-            初 · Firstborn
+            Firstborn
           </h1>
           <p className="mt-4 text-sm leading-relaxed text-stone-500">
             Hidden at the peak. Found through intention.
@@ -104,7 +108,8 @@ export default async function Home({
         {purchase === "success" && (
           <Alert className="mb-8 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 ring-0">
             <AlertDescription className="text-sm text-emerald-800">
-              Thank you. {CREDITS_PER_PURCHASE} generations have been added to your account.
+              Thank you. {CREDITS_PER_PURCHASE} generations have been added to
+              your account.
             </AlertDescription>
           </Alert>
         )}
