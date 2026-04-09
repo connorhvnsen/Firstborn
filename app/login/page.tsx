@@ -1,6 +1,8 @@
+import { redirect } from "next/navigation";
 import { signInWithApple, signInWithGoogle } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function LoginPage({
   searchParams,
@@ -8,6 +10,15 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const { error } = await searchParams;
+
+  // Already signed in? Bounce to the generator.
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (user) {
+    redirect("/");
+  }
 
   return (
     <div className="min-h-full flex-1 bg-stone-50 text-stone-800">
