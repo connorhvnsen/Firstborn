@@ -156,7 +156,6 @@ export function NameForm({
         throw new Error(data.error ?? `Request failed (${res.status})`);
       }
 
-
       // Accumulate the entire response before rendering anything. The user
       // explicitly prefers a single fade-in over a token-by-token stream —
       // it feels more intentional and gives a clean reveal moment.
@@ -274,7 +273,12 @@ export function NameForm({
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <Field label="What are you building?" required htmlFor="description">
+        <Field
+          label="What are you building?"
+          required
+          htmlFor="description"
+          helper="A few sentences. The richer the picture (what makes it unique, who it's for, the story behind it) the better."
+        >
           <Textarea
             id="description"
             value={description}
@@ -287,7 +291,11 @@ export function NameForm({
           />
         </Field>
 
-        <Field label="What should your audience feel?" htmlFor="feeling">
+        <Field
+          label="What should your audience feel?"
+          htmlFor="feeling"
+          helper="Optional. Adjectives, moods, references — the impression you want a stranger to take away in three seconds."
+        >
           <Input
             id="feeling"
             value={feeling}
@@ -300,6 +308,7 @@ export function NameForm({
         <Field
           label="Competitors (and what they're called)"
           htmlFor="competitors"
+          helper="Optional. The names matter more than the companies — we'll steer your suggestions away from anything that sounds like them."
         >
           <Textarea
             id="competitors"
@@ -489,11 +498,13 @@ function Field({
   label,
   required,
   htmlFor,
+  helper,
   children,
 }: {
   label: string;
   required?: boolean;
   htmlFor: string;
+  helper?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -505,6 +516,9 @@ function Field({
         {label}
         {required && <span className="ml-1 text-stone-400">*</span>}
       </Label>
+      {helper && (
+        <p className="mb-2 text-xs leading-relaxed text-stone-500">{helper}</p>
+      )}
       {children}
     </div>
   );
