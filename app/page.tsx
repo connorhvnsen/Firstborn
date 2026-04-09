@@ -4,6 +4,7 @@ import { Header } from "./_components/header";
 import { NameForm } from "./_components/name-form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { isUnlimitedUser } from "@/lib/unlimited-users";
+import { CREDITS_PER_PURCHASE } from "@/lib/pricing";
 
 export default async function Home({
   searchParams,
@@ -102,7 +103,7 @@ export default async function Home({
         {purchase === "success" && (
           <Alert className="mb-8 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 ring-0">
             <AlertDescription className="text-sm text-emerald-800">
-              Thank you. 100 generations have been added to your account.
+              Thank you. {CREDITS_PER_PURCHASE} generations have been added to your account.
             </AlertDescription>
           </Alert>
         )}

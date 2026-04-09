@@ -1,7 +1,9 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { stripe, PRICE_USD_CENTS, CREDITS_PER_PURCHASE, PRICE_LABEL } from "@/lib/stripe";
+import { stripe, CREDITS_PER_PURCHASE } from "@/lib/stripe";
+
+const STRIPE_PRICE_ID = process.env.STRIPE_PRICE_ID;
 
 export const runtime = "nodejs";
 
@@ -13,6 +15,13 @@ export async function POST(request: Request) {
 
   if (!user) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+  }
+
+  if (!STRIPE_PRICE_ID) {
+    return NextResponse.json(
+      { error: "STRIPE_PRICE_ID is not configured." },
+      { status: 500 },
+    );
   }
 
   // Look up (or lazily create) a Stripe customer for this user so repeat
@@ -54,14 +63,7 @@ export async function POST(request: Request) {
     line_items: [
       {
         quantity: 1,
-        price_data: {
-          currency: "usd",
-          unit_amount: PRICE_USD_CENTS,
-          product_data: {
-            name: `${CREDITS_PER_PURCHASE} generations`,
-            description: `One-time top-up — ${PRICE_LABEL}. Credits never expire.`,
-          },
-        },
+        price: STRIPE_PRICE_ID,
       },
     ],
     success_url: `${origin}/?purchase=success`,

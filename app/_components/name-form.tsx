@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createProject } from "@/app/_actions/projects";
+import { CREDITS_PER_PURCHASE, PRICE_LABEL } from "@/lib/pricing";
 
 type Project = { id: string; name: string };
 
@@ -328,7 +329,7 @@ export function NameForm({
           >
             {checkoutLoading
               ? "Opening checkout..."
-              : "Buy 100 generations — $14.99"}
+              : `Buy ${CREDITS_PER_PURCHASE} generations — ${PRICE_LABEL}`}
           </Button>
         ) : (
           <Button

@@ -4,7 +4,7 @@
 //
 // To revoke, remove the email from this set and ship.
 const UNLIMITED_EMAILS = new Set([
-  "connor@hvnsen.com",
+  // "connor@hvnsen.com",
   "connor_hansen@icloud.com",
 ]);
 
