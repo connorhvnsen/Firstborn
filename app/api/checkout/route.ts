@@ -56,6 +56,7 @@ export async function POST(request: Request) {
     mode: "payment",
     customer: customerId,
     client_reference_id: user.id,
+    allow_promotion_codes: true,
     metadata: {
       supabase_user_id: user.id,
       credits: String(CREDITS_PER_PURCHASE),
