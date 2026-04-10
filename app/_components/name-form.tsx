@@ -8,7 +8,6 @@ import {
   useState,
   useTransition,
 } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ChevronFirst,
@@ -17,7 +16,7 @@ import {
   ChevronRight,
   RefreshCw,
 } from "lucide-react";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -38,6 +37,7 @@ import { nameKey, parseNameSections } from "@/lib/parse-names";
 import { NameCard } from "./name-card";
 import { countWords } from "./animated-markdown";
 import { FavoritesSection, type Favorite } from "./favorites-section";
+import { SignInDialog } from "./sign-in-dialog";
 
 type Project = { id: string; name: string };
 
@@ -76,6 +76,7 @@ export function NameForm({
   initialFavorites,
 }: Props) {
   const router = useRouter();
+  const [signInOpen, setSignInOpen] = useState(false);
   const [creatingProject, startCreatingProject] = useTransition();
 
   // Local mirror of the project's favorites. We update this optimistically
@@ -308,6 +309,36 @@ export function NameForm({
     }
   }
 
+  // After OAuth sign-in, check if the user had a pending generation and
+  // auto-fire it so they don't have to click again.
+  const runGenerationRef = useRef(runGeneration);
+  useLayoutEffect(() => {
+    runGenerationRef.current = runGeneration;
+  });
+  const hasRestoredRef = useRef(false);
+  useEffect(() => {
+    if (!signedIn || !currentProjectId || hasRestoredRef.current) return;
+    const raw = sessionStorage.getItem("pending_generation");
+    if (!raw) return;
+    hasRestoredRef.current = true;
+    sessionStorage.removeItem("pending_generation");
+    try {
+      const saved = JSON.parse(raw) as {
+        description?: string;
+        feeling?: string;
+        competitors?: string;
+      };
+      if (saved.description?.trim()) {
+        setDescription(saved.description);
+        setFeeling(saved.feeling ?? "");
+        setCompetitors(saved.competitors ?? "");
+        setTimeout(() => runGenerationRef.current(), 0);
+      }
+    } catch {
+      // Corrupt data — ignore.
+    }
+  }, [signedIn, currentProjectId]);
+
   async function handleBuy() {
     setCheckoutLoading(true);
     try {
@@ -446,12 +477,20 @@ export function NameForm({
         </Field>
 
         {!signedIn ? (
-          <Link
-            href="/login"
-            className={`block text-center ${buttonVariants({ className: primaryButtonClass })}`}
+          <Button
+            type="button"
+            onClick={() => {
+              sessionStorage.setItem(
+                "pending_generation",
+                JSON.stringify({ description, feeling, competitors }),
+              );
+              setSignInOpen(true);
+            }}
+            disabled={!description.trim()}
+            className={primaryButtonClass}
           >
-            Sign in to begin — 3 free generations
-          </Link>
+            Generate Names
+          </Button>
         ) : outOfCredits ? (
           <Button
             type="button"
@@ -628,6 +667,8 @@ export function NameForm({
           )}
         </Card>
       )}
+
+      <SignInDialog open={signInOpen} onOpenChange={setSignInOpen} />
     </>
   );
 }
