@@ -582,7 +582,7 @@ export function NameForm({
                         className="w-full rounded-md border-stone-200 bg-white text-stone-700 shadow-sm hover:bg-stone-50 hover:text-stone-900"
                       >
                         <RefreshCw className="size-4 shrink-0" />
-                        Regenerate
+                        Generate
                       </Button>
                     </div>
                   )}
