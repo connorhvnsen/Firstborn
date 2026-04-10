@@ -207,6 +207,44 @@ end;
 $$;
 
 -- =============================================================
+-- favorites: per-project starred names. Stories are denormalized
+-- so favorites survive even if their source generation is deleted.
+-- name_key is the lowercased name used to enforce uniqueness;
+-- name preserves the original casing for display.
+-- =============================================================
+create table if not exists public.favorites (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid not null references auth.users(id) on delete cascade,
+  project_id    uuid not null references public.projects(id) on delete cascade,
+  name          text not null,
+  name_key      text not null,
+  story         text not null,
+  generation_id uuid references public.generations(id) on delete set null,
+  created_at    timestamptz not null default now(),
+  unique (project_id, name_key)
+);
+
+create index if not exists favorites_project_id_created_at_idx
+  on public.favorites (project_id, created_at desc);
+
+alter table public.favorites enable row level security;
+
+drop policy if exists "favorites_self_select" on public.favorites;
+create policy "favorites_self_select"
+  on public.favorites for select
+  using (auth.uid() = user_id);
+
+drop policy if exists "favorites_self_insert" on public.favorites;
+create policy "favorites_self_insert"
+  on public.favorites for insert
+  with check (auth.uid() = user_id);
+
+drop policy if exists "favorites_self_delete" on public.favorites;
+create policy "favorites_self_delete"
+  on public.favorites for delete
+  using (auth.uid() = user_id);
+
+-- =============================================================
 -- Stripe webhook idempotency: insert (id) succeeds once,
 -- subsequent deliveries of the same event no-op.
 -- =============================================================

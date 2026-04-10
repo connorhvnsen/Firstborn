@@ -27,6 +27,7 @@ type Counter = { i: number };
 
 type Props = {
   children: string;
+  wordOffset?: number;
 };
 
 /**
@@ -46,18 +47,24 @@ type Props = {
  * this component remounts on output change (the form already does this
  * via the generation id).
  */
-export function AnimatedMarkdown({ children }: Props) {
+/** Count the number of animatable words in a string (matches the splitting
+ *  logic used during rendering so offsets stay in sync). */
+export function countWords(text: string): number {
+  return text.split(/\s+/).filter((w) => w.length > 0).length;
+}
+
+export function AnimatedMarkdown({ children, wordOffset = 0 }: Props) {
   const reduced = useReducedMotion();
 
   const tree = useMemo(() => {
     if (reduced) return null;
     const mdast = processor.parse(children);
     const hast = processor.runSync(mdast) as Root;
-    const counter: Counter = { i: 0 };
+    const counter: Counter = { i: wordOffset };
     return hast.children.map((child, i) =>
       renderRootChild(child, counter, `n${i}`),
     );
-  }, [children, reduced]);
+  }, [children, reduced, wordOffset]);
 
   if (reduced) {
     return <ReactMarkdown>{children}</ReactMarkdown>;

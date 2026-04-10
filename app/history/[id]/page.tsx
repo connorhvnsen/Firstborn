@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/accordion";
 import { Card, CardContent } from "@/components/ui/card";
 import { PromptToggle } from "./prompt-toggle";
+import { FavoritesPanel } from "./favorites-panel";
 
 type Generation = {
   id: string;
@@ -38,7 +39,7 @@ export default async function ProjectHistoryPage({
     redirect("/login");
   }
 
-  const [{ data: profile }, { data: project }, { data: generations }] =
+  const [{ data: profile }, { data: project }, { data: generations }, { data: favorites }] =
     await Promise.all([
       supabase.from("profiles").select("credits").eq("user_id", user.id).single(),
       supabase
@@ -50,6 +51,11 @@ export default async function ProjectHistoryPage({
       supabase
         .from("generations")
         .select("id, description, feeling, competitors, output, created_at")
+        .eq("project_id", id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("favorites")
+        .select("id, name, name_key, story, created_at")
         .eq("project_id", id)
         .order("created_at", { ascending: false }),
     ]);
@@ -88,6 +94,8 @@ export default async function ProjectHistoryPage({
             Open in generator →
           </Link>
         </header>
+
+        <FavoritesPanel projectId={id} initialFavorites={favorites ?? []} />
 
         {items.length === 0 ? (
           <Card className="gap-0 rounded-md border border-stone-200 bg-white py-0 text-center shadow-sm ring-0">

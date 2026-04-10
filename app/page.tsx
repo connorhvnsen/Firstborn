@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { Header } from "./_components/header";
@@ -54,10 +55,13 @@ export default async function Home({
       projects = refreshed ?? [];
     }
 
-    // Resolve the active project: prefer the URL param if it's one of the
-    // user's projects, otherwise fall back to the most recent.
+    // Resolve the active project: prefer the URL param, then the cookie
+    // from the last session, then fall back to the most recent project.
+    const cookieStore = await cookies();
+    const lastProjectId = cookieStore.get("last_project")?.value ?? null;
     const requested = projects.find((p) => p.id === requestedProjectId);
-    currentProjectId = requested?.id ?? projects[0]?.id ?? null;
+    const remembered = lastProjectId ? projects.find((p) => p.id === lastProjectId) : undefined;
+    currentProjectId = requested?.id ?? remembered?.id ?? projects[0]?.id ?? null;
 
     // If the URL had an invalid/foreign id, scrub it from the URL.
     if (requestedProjectId && requested === undefined && currentProjectId) {
@@ -77,13 +81,28 @@ export default async function Home({
     output: string;
     created_at: string;
   }[] = [];
+  let initialFavorites: {
+    id: string;
+    name: string;
+    name_key: string;
+    story: string;
+    created_at: string;
+  }[] = [];
   if (currentProjectId) {
-    const { data: gens } = await supabase
-      .from("generations")
-      .select("id, description, feeling, competitors, output, created_at")
-      .eq("project_id", currentProjectId)
-      .order("created_at", { ascending: false });
+    const [{ data: gens }, { data: favs }] = await Promise.all([
+      supabase
+        .from("generations")
+        .select("id, description, feeling, competitors, output, created_at")
+        .eq("project_id", currentProjectId)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("favorites")
+        .select("id, name, name_key, story, created_at")
+        .eq("project_id", currentProjectId)
+        .order("created_at", { ascending: false }),
+    ]);
     initialGenerations = gens ?? [];
+    initialFavorites = favs ?? [];
   }
 
   return (
@@ -129,6 +148,7 @@ export default async function Home({
           projects={projects}
           currentProjectId={currentProjectId}
           initialGenerations={initialGenerations}
+          initialFavorites={initialFavorites}
         />
 
         <Footer />

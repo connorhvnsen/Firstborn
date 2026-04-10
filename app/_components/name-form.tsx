@@ -3,14 +3,20 @@
 import {
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   useTransition,
 } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AnimatedMarkdown } from "./animated-markdown";
-import { RefreshCw } from "lucide-react";
+import {
+  ChevronFirst,
+  ChevronLast,
+  ChevronLeft,
+  ChevronRight,
+  RefreshCw,
+} from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,7 +32,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createProject } from "@/app/_actions/projects";
+import { toggleFavorite } from "@/app/_actions/favorites";
 import { CREDITS_PER_PURCHASE, PRICE_LABEL } from "@/lib/pricing";
+import { nameKey, parseNameSections } from "@/lib/parse-names";
+import { NameCard } from "./name-card";
+import { countWords } from "./animated-markdown";
+import { FavoritesSection, type Favorite } from "./favorites-section";
 
 type Project = { id: string; name: string };
 
@@ -46,6 +57,7 @@ type Props = {
   projects: Project[];
   currentProjectId: string | null;
   initialGenerations: Generation[];
+  initialFavorites: Favorite[];
 };
 
 const fieldClass =
@@ -61,9 +73,108 @@ export function NameForm({
   projects,
   currentProjectId,
   initialGenerations,
+  initialFavorites,
 }: Props) {
   const router = useRouter();
   const [creatingProject, startCreatingProject] = useTransition();
+
+  // Local mirror of the project's favorites. We update this optimistically
+  // when the user toggles a star so the UI feels instant; the server action
+  // resolves in the background and rolls back on failure.
+  const [favorites, setFavorites] = useState<Favorite[]>(initialFavorites);
+  const favoriteKeys = useMemo(
+    () => new Set(favorites.map((f) => f.name_key)),
+    [favorites],
+  );
+  // Track which name_keys currently have an in-flight toggle so we can
+  // disable the button and avoid double-firing the action.
+  const [pendingFavoriteKeys, setPendingFavoriteKeys] = useState<Set<string>>(
+    () => new Set(),
+  );
+
+  // Reset favorites when the parent passes a new project's set. The page
+  // currently re-mounts NameForm via `key={currentProjectId}`, so this
+  // effect is mostly defensive — it keeps things sane if that ever changes.
+  useEffect(() => {
+    setFavorites(initialFavorites);
+  }, [initialFavorites]);
+
+  // Persist the active project so navigating away and back remembers it.
+  useEffect(() => {
+    if (currentProjectId) {
+      document.cookie = `last_project=${currentProjectId};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
+    }
+  }, [currentProjectId]);
+
+  async function handleToggleFavorite(args: {
+    name: string;
+    story: string;
+    generationId: string | null;
+  }) {
+    if (!currentProjectId) return;
+    const key = nameKey(args.name);
+    if (!key || pendingFavoriteKeys.has(key)) return;
+
+    const wasFavorited = favoriteKeys.has(key);
+    const previousFavorites = favorites;
+
+    // Optimistic update — flip the state immediately so the star fills/empties
+    // before the server round-trip resolves.
+    setPendingFavoriteKeys((prev) => {
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+    if (wasFavorited) {
+      setFavorites((prev) => prev.filter((f) => f.name_key !== key));
+    } else {
+      const optimistic: Favorite = {
+        // Temporary client-side id; the next router.refresh() will replace
+        // it with the real DB row when we re-fetch from the server.
+        id: `local-${Date.now()}`,
+        name: args.name,
+        name_key: key,
+        story: args.story,
+        created_at: new Date().toISOString(),
+      };
+      setFavorites((prev) => [optimistic, ...prev]);
+    }
+
+    try {
+      const result = await toggleFavorite({
+        projectId: currentProjectId,
+        name: args.name,
+        story: args.story,
+        generationId: args.generationId,
+      });
+      if (!result.ok) {
+        // Roll back on failure.
+        setFavorites(previousFavorites);
+        setError(result.error);
+      } else {
+        // Pull the canonical row(s) from the server so any local-id placeholders
+        // are replaced and timestamps are accurate.
+        router.refresh();
+      }
+    } catch (err) {
+      setFavorites(previousFavorites);
+      setError(err instanceof Error ? err.message : "Could not save favorite.");
+    } finally {
+      setPendingFavoriteKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
+  }
+
+  function handleUnfavoriteFromList(fav: Favorite) {
+    void handleToggleFavorite({
+      name: fav.name,
+      story: fav.story,
+      generationId: null,
+    });
+  }
 
   // Local copy of the project's generations. Newest first. We mutate this
   // locally after each successful submission so the user doesn't have to
@@ -83,6 +194,11 @@ export function NameForm({
     !unlimited && initialCredits === 0,
   );
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+  // Parse the currently visible generation's markdown into discrete name
+  // sections so each can be rendered as a card with its own star button.
+  const sections = useMemo(() => parseNameSections(output), [output]);
+  const currentGenerationId = genList[currentIndex]?.id ?? null;
 
   // Scroll the output card to near the top of the viewport whenever a
   // generation kicks off, so the user immediately sees the skeleton /
@@ -214,6 +330,7 @@ export function NameForm({
 
   function handleProjectChange(id: string | null) {
     if (!id || id === currentProjectId) return;
+    document.cookie = `last_project=${id};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
     router.push(`/?project=${id}`);
   }
 
@@ -270,6 +387,14 @@ export function NameForm({
             </Button>
           </div>
         </div>
+      )}
+
+      {signedIn && currentProjectId && (
+        <FavoritesSection
+          favorites={favorites}
+          onUnfavorite={handleUnfavoriteFromList}
+          pendingKeys={pendingFavoriteKeys}
+        />
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -375,11 +500,53 @@ export function NameForm({
                 without changing the card's height. */}
             <div className="relative">
               {output && (
-                <div
-                  key={genList[currentIndex]?.id ?? "empty"}
-                  className="prose prose-stone prose-headings:font-light prose-headings:tracking-wide prose-p:leading-relaxed prose-strong:text-stone-900 max-w-none p-6"
-                >
-                  <AnimatedMarkdown>{output}</AnimatedMarkdown>
+                <div key={currentGenerationId ?? "empty"}>
+                  {
+                    sections.reduce<{
+                      nodes: React.ReactNode[];
+                      offset: number;
+                    }>(
+                      (acc, section) => {
+                        const key = nameKey(section.name);
+                        acc.nodes.push(
+                          <NameCard
+                            key={`${currentGenerationId ?? "empty"}-${key}`}
+                            name={section.name}
+                            story={section.story}
+                            favorited={favoriteKeys.has(key)}
+                            pending={pendingFavoriteKeys.has(key)}
+                            onToggle={() =>
+                              handleToggleFavorite({
+                                name: section.name,
+                                story: section.story,
+                                generationId: currentGenerationId,
+                              })
+                            }
+                            wordOffset={acc.offset}
+                          />,
+                        );
+                        // +1 for the heading word, then the story words
+                        acc.offset += 1 + countWords(section.story);
+                        return acc;
+                      },
+                      { nodes: [], offset: 0 },
+                    ).nodes
+                  }
+                  {!loading && (
+                    <div className="border-t border-stone-100 px-6 py-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="default"
+                        onClick={runGeneration}
+                        disabled={!canSubmit}
+                        className="w-full rounded-md border-stone-200 bg-white text-stone-700 shadow-sm hover:bg-stone-50 hover:text-stone-900"
+                      >
+                        <RefreshCw className="size-4 shrink-0" />
+                        Regenerate
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
               {loading && (
@@ -397,51 +564,66 @@ export function NameForm({
           </CardContent>
           {genList.length > 0 && (
             <div className="sticky bottom-0 z-10 flex items-center justify-between gap-3 rounded-b-md border-t border-stone-200 bg-white/80 px-4 py-3 backdrop-blur">
-              <Button
-                type="button"
-                variant="outline"
-                size="default"
-                onClick={() => showGen(currentIndex + 1)}
-                disabled={loading || currentIndex >= genList.length - 1}
-                className="rounded-md border-stone-200 bg-white text-stone-700 shadow-sm hover:bg-stone-50 hover:text-stone-900"
-              >
-                ← Prev
-              </Button>
-              <div className="flex items-center gap-3">
-                <span className="flex items-center gap-2 text-xs text-stone-500">
-                  {loading ? (
-                    <>
-                      <RefreshCw className="size-3 shrink-0 animate-spin" />
-                      Generating…
-                    </>
-                  ) : (
-                    `${genList.length - currentIndex} of ${genList.length}`
-                  )}
-                </span>
-                {!loading && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="default"
-                    onClick={runGeneration}
-                    disabled={!canSubmit}
-                    className="rounded-md border-stone-200 bg-white text-stone-700 shadow-sm hover:bg-stone-50 hover:text-stone-900"
-                  >
-                    <RefreshCw className="size-4 shrink-0" />
-                    Regenerate
-                  </Button>
-                )}
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => showGen(genList.length - 1)}
+                  disabled={loading || currentIndex >= genList.length - 1}
+                  className="size-9 rounded-md border-stone-200 bg-white text-stone-700 shadow-sm hover:bg-stone-50 hover:text-stone-900"
+                  aria-label="First page"
+                >
+                  <ChevronFirst className="size-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => showGen(currentIndex + 1)}
+                  disabled={loading || currentIndex >= genList.length - 1}
+                  className="size-9 rounded-md border-stone-200 bg-white text-stone-700 shadow-sm hover:bg-stone-50 hover:text-stone-900 sm:size-auto sm:px-3 sm:py-2"
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="size-4 shrink-0 sm:hidden" />
+                  <span className="hidden sm:inline">← Prev</span>
+                </Button>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="default"
-                onClick={() => showGen(currentIndex - 1)}
-                disabled={loading || currentIndex <= 0}
-                className="rounded-md border-stone-200 bg-white text-stone-700 shadow-sm hover:bg-stone-50 hover:text-stone-900"
-              >
-                Next →
-              </Button>
+              <span className="flex items-center gap-2 text-xs text-stone-500">
+                {loading ? (
+                  <>
+                    <RefreshCw className="size-3 shrink-0 animate-spin" />
+                    Generating…
+                  </>
+                ) : (
+                  `${genList.length - currentIndex} of ${genList.length}`
+                )}
+              </span>
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => showGen(currentIndex - 1)}
+                  disabled={loading || currentIndex <= 0}
+                  className="size-9 rounded-md border-stone-200 bg-white text-stone-700 shadow-sm hover:bg-stone-50 hover:text-stone-900 sm:size-auto sm:px-3 sm:py-2"
+                  aria-label="Next page"
+                >
+                  <ChevronRight className="size-4 shrink-0 sm:hidden" />
+                  <span className="hidden sm:inline">Next →</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => showGen(0)}
+                  disabled={loading || currentIndex <= 0}
+                  className="size-9 rounded-md border-stone-200 bg-white text-stone-700 shadow-sm hover:bg-stone-50 hover:text-stone-900"
+                  aria-label="Last page"
+                >
+                  <ChevronLast className="size-4" />
+                </Button>
+              </div>
             </div>
           )}
         </Card>
